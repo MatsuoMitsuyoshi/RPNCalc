@@ -6,22 +6,17 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
-
 const STATUSBAR_HEIGHT = Platform.OS == 'ios' ? 20 : StatusBar.currentHeight;
-
-// ボタンのFunctional Component
 const CalcButton = (props) => {
   const flex = props.flex ? props.flex : 1
   return (
     <TouchableOpacity
-      style={[styles.calcButton, {flex, flex}]}
+      style={[styles.calcButton, {flex: flex}]}
       onPress={() => {props.btnEvent()}}>
       <Text style={styles.calcButtonText}>{props.label}</Text>
     </TouchableOpacity>
   )
 }
-
-// ボタンのFragmentを返すFunctional Component
 const CalcButtons = (props) => {
   return (
     <React.Fragment>
@@ -38,9 +33,7 @@ const CalcButtons = (props) => {
     </React.Fragment>
   )
 }
-
 export default class App extends React.Component {
-  // ボタンの定義
   buttons = [
     [
       {
@@ -55,7 +48,7 @@ export default class App extends React.Component {
       {
         label: '+',
         btnEvent: () => {this.calcButton('+')},
-      },
+      }
     ],
     [
       {
@@ -72,8 +65,8 @@ export default class App extends React.Component {
       },
       {
         label: '-',
-        btnEvent: () => {this.valueButton('-')},
-      },
+        btnEvent: () => {this.calcButton('-')},
+      }
     ],
     [
       {
@@ -90,8 +83,8 @@ export default class App extends React.Component {
       },
       {
         label: '*',
-        btnEvent: () => {this.valueButton('*')},
-      },
+        btnEvent: () => {this.calcButton('*')},
+      }
     ],
     [
       {
@@ -118,8 +111,8 @@ export default class App extends React.Component {
       },
       {
         label: '/',
-        btnEvent: () => {this.valueButton('/')},
-      },
+        btnEvent: () => {this.calcButton('/')},
+      }
     ],
     [
       {
@@ -128,44 +121,121 @@ export default class App extends React.Component {
       }
     ]
   ]
-
-  // ボタンの役割ごとに関数作成
+  constructor(props) {
+    super(props)
+    this.state = {
+      results: [],
+      current: "0",
+      dotInputed: false,
+      afterValueButton: false,
+    }
+  }
   valueButton = (value) => {
-
+    let currentString = this.state.current
+    const dotInputed = this.state.dotInputed
+    let newDotInputed = dotInputed
+    if (value == ".") {
+      if (!dotInputed) {
+        currentString = currentString + value
+        newDotInputed = true
+      }
+    } else if (currentString == "0") {
+      currentString = value
+    } else {
+      currentString = currentString + value
+    }
+    this.setState({current: currentString, dotInputed: newDotInputed, afterValueButton: true})
   }
-
   enterButton = () => {
-
+    let newValue = NaN
+    if (this.state.dotInputed) {
+      newValue = parseFloat(this.state.current)
+    } else {
+      newValue = parseInt(this.state.current)
+    }
+    if (isNaN(newValue)) {
+      return
+    }
+    let results = this.state.results
+    results.push(newValue)
+    this.setState({current: "0", dotInputed: false, results: results, afterValueButton: false})
   }
-
   calcButton = (value) => {
-
+    if (this.state.results.length < 2) {
+      return
+    }
+    if (this.state.afterValueButton == true) {
+      return
+    }
+    let newResults = this.state.results
+    const target2 = newResults.pop()
+    const target1 = newResults.pop()
+    newValue = null
+    switch (value) {
+      case '+':
+        newValue = target1 + target2
+        break
+      case '-':
+        newValue = target1 - target2
+        break
+      case '*':
+        newValue = target1 * target2
+        break
+      case '/':
+        newValue = target1 / target2
+        if (!isFinite(newValue)) {
+          newValue = null
+        }
+        break
+      default:
+        break
+    }
+    if (newValue == null) {
+      return
+    }
+    newResults.push(newValue)
+    this.setState({current: "0", dotInputed: false, results: newResults, afterValueButton: false})
   }
-
   acButton = () => {
-
+    this.setState({current: "0", dotInputed: false, results: [], afterValueButton: false})
+  }
+  cButton = () => {
+    this.setState({current: "0", dotInputed: false, afterValueButton: false})
   }
 
-  cButton = () => {
-
+  showValue = (index) => {
+    // 1: 文字が入力中だった場合に表示対象を一つずらす
+    if (this.state.afterValueButton || this.state.results.length == 0) {
+      index = index - 1
+    }
+    // 2: indexが -1 になったら入力中なので current を表示する
+    if (index == -1) {
+      return this.state.current
+    }
+    // 3: スタックで表示できるものを優先して表示する
+    if (this.state.results.length > index) {
+      return this.state.results[this.state.results.length - 1 - index]
+    }
+    return ""
   }
 
   render() {
     return (
       <View style={styles.container}>
-        { /* 結果を表示するView */ }
         <View style={styles.results}>
+          { /* 4: スタックもしくはcurrentを最大3つまで表示 */ }
           <View style={styles.resultLine}>
+            <Text>{this.showValue(2)}</Text>
           </View>
           <View style={styles.resultLine}>
+            <Text>{this.showValue(1)}</Text>
           </View>
           <View style={styles.resultLine}>
+            <Text>{this.showValue(0)}</Text>
           </View>
         </View>
-        { /* ボタンを配置するView */ }
         <View style={styles.buttons}>
           <View style={styles.buttonsLine}>
-            { /* CalcButtonsでそれぞれのView に配置していく */ }
             <CalcButtons buttons={this.buttons[0]} />
           </View>
           <View style={styles.buttonsLine}>
@@ -198,7 +268,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingTop: STATUSBAR_HEIGHT,
   },
-  // 結果を表示する領域と、一つずつの行のスタイル
   results: {
     flex: 3,
     backgroundColor: '#fff',
@@ -208,8 +277,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     justifyContent: 'center',
     alignItems: 'flex-end',
+    paddingRight: 20, // 5: 右端から少し離す
   },
-  // ボタンを表示する領域と、ボタンの行のスタイル
   buttons: {
     flex: 5,
   },
@@ -221,7 +290,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
   },
-  // 最後の二行は組み方が違うので違うスタイルを設定する
   lastButtonLinesContainer: {
     flex: 2,
     flexDirection: 'row',
