@@ -5,8 +5,11 @@ import {
   View,
   Platform,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
+
 const STATUSBAR_HEIGHT = Platform.OS == 'ios' ? 20 : StatusBar.currentHeight;
+
 const CalcButton = (props) => {
   const flex = props.flex ? props.flex : 1
   return (
@@ -123,13 +126,38 @@ export default class App extends React.Component {
   ]
   constructor(props) {
     super(props)
+    const {height, width} = Dimensions.get('window')
     this.state = {
       results: [],
       current: "0",
       dotInputed: false,
       afterValueButton: false,
+      orientation: this.getOrientation(height, width),
     }
   }
+
+  getOrientation = (height, width) => {
+    if (height > width) {
+      return 'portrait'
+    }
+    return 'landscape'
+  }
+
+  changeOrientation = ({window}) => {
+    const orientation = this.getOrientation(window.height, window.width)
+    this.setState({orientation: orientation})
+  }
+
+  componentDidMount() {
+    // 画面が変更された時に発生するイベントを登録
+    Dimensions.addEventListener('change', this.changeOrientation)
+  }
+
+  componentWillUnmount() {
+    // 画面が変更された時に発生するイベントを解除
+    Dimensions.removeEventListener('change', this.changeOrientation)
+  }
+
   valueButton = (value) => {
     let currentString = this.state.current
     const dotInputed = this.state.dotInputed
@@ -146,6 +174,7 @@ export default class App extends React.Component {
     }
     this.setState({current: currentString, dotInputed: newDotInputed, afterValueButton: true})
   }
+
   enterButton = () => {
     let newValue = NaN
     if (this.state.dotInputed) {
@@ -160,6 +189,7 @@ export default class App extends React.Component {
     results.push(newValue)
     this.setState({current: "0", dotInputed: false, results: results, afterValueButton: false})
   }
+
   calcButton = (value) => {
     if (this.state.results.length < 2) {
       return
@@ -196,9 +226,11 @@ export default class App extends React.Component {
     newResults.push(newValue)
     this.setState({current: "0", dotInputed: false, results: newResults, afterValueButton: false})
   }
+
   acButton = () => {
     this.setState({current: "0", dotInputed: false, results: [], afterValueButton: false})
   }
+
   cButton = () => {
     this.setState({current: "0", dotInputed: false, afterValueButton: false})
   }
@@ -220,19 +252,25 @@ export default class App extends React.Component {
   }
 
   render() {
+    // 縦向きと横向きでflexの値を変更
+    let resultFlex = 3
+    if (this.state.orientation == 'landscape') {
+      resultFlex = 1
+    }
+
     return (
       <View style={styles.container}>
-        <View style={styles.results}>
-          { /* 4: スタックもしくはcurrentを最大3つまで表示 */ }
-          <View style={styles.resultLine}>
-            <Text>{this.showValue(2)}</Text>
-          </View>
-          <View style={styles.resultLine}>
-            <Text>{this.showValue(1)}</Text>
-          </View>
-          <View style={styles.resultLine}>
-            <Text>{this.showValue(0)}</Text>
-          </View>
+        { /* flexの値をマージする */ }
+        <View style={styles.results, {flex: resultFlex}}>
+          { /* resultLineを動的に生成 */ }
+          { [...Array(resultFlex).keys()].reverse().map(index => {
+              return (
+                <View style={styles.resultLine} key={"result_" + index}>
+                  <Text>{this.showValue(index)}</Text>
+                </View>
+              )
+            }
+          )}
         </View>
         <View style={styles.buttons}>
           <View style={styles.buttonsLine}>
